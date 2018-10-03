@@ -2,8 +2,11 @@ import csv
 from multiprocessing.dummy import Pool
 import threading
 import queue
+import random
+import requests
+import bs4
 
-cores = 16
+cores = 4
 pool = Pool(cores)
 seen = queue.Queue()
 
@@ -23,14 +26,24 @@ def loop():
 def determine(site):
     url = site[0]
     cond = url.find('.dk/') != -1
-    seen.put((cond, url))
+    text = requests.get(url).text
+    soup = bs4.BeautifulSoup(text, 'html.parser')
+    html = soup.select_one('html[lang]')
+    if html is None:
+        lang = None
+    else:
+        lang = html['lang']
+
+    seen.put((cond, [url, lang]))
 
 
 def main():
     threading.Thread(target=loop, daemon=True).start()
 
     csv_file = open('../shopify.csv', 'r')
-    csv_iter = csv.reader(csv_file, delimiter=';')
+    csv_iter = list(csv.reader(csv_file, delimiter=';'))
+    random.shuffle(csv_iter)
+
     pool.map(determine, csv_iter)
 
 
