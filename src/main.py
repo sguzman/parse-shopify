@@ -5,6 +5,8 @@ import queue
 import random
 import requests
 import bs4
+import sys
+import asyncio
 
 cores = 4
 pool = Pool(cores)
@@ -23,18 +25,25 @@ def loop():
         print(msg)
 
 
-def determine(site):
-    url = site[0]
-    cond = url.find('.dk/') != -1
-    text = requests.get(url).text
-    soup = bs4.BeautifulSoup(text, 'html.parser')
-    html = soup.select_one('html[lang]')
-    if html is None:
-        lang = None
-    else:
-        lang = html['lang']
+async def retrieve(site):
+    try:
+        url = site[0]
+        cond = url.find('.dk/') != -1
+        text = requests.get(url).text
+        soup = bs4.BeautifulSoup(text, 'html.parser')
+        html = soup.select_one('html[lang]')
+        if html is None:
+            lang = None
+        else:
+            lang = html['lang']
 
-    seen.put((cond, [url, lang]))
+        seen.put((cond, [url, lang]))
+    except Exception as e:
+        print(e, file=sys.stderr)
+
+
+def determine(site):
+    asyncio.run(retrieve(site))
 
 
 def main():
